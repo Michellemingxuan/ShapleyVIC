@@ -14,7 +14,7 @@ def get_sub_matrix(matrix, indices):
     return m2
 
 
-def draw_models_initial(coef_optim, coef_optim_var, u1, u2, m = 800, 
+def draw_models_initial(coef_optim, coef_optim_var, u1, u2, coef_names=None, m = 800, 
                             random_state = 1234):
     """ Generate m regression models centered around the optimal model
 
@@ -40,9 +40,12 @@ def draw_models_initial(coef_optim, coef_optim_var, u1, u2, m = 800,
         coef_mat : pandas.DataFrame
             Generated model coefficients
     """
-
     df_rng = default_rng(seed=random_state)
-    coef_names = coef_optim.index.values
+    if isinstance(coef_optim, np.ndarray):
+        assert coef_names is not None, "coef_names must be provided if coef_optim is a numpy array"
+        coef_optim = pd.Series(coef_optim, index=coef_names)
+    else:
+        coef_names = coef_optim.index.values
     # muln_with_mu = partial(np.random.multivariate_normal, coef_optim.values)
     muln_with_mu = partial(df_rng.multivariate_normal, coef_optim.values)
     # k_vec = np.random.uniform(u1, u2, m)
@@ -268,7 +271,7 @@ def plot_perf_metric(perf_metric, eligible, x_range, select = None,
 
 
 def find_u2_loss(u2_min, u2_max, coef_optim, coef_optim_var, loss_func, 
-                    m, k, ratio_range, epsilon=0.05, random_state = 1234):
+                    m, k, ratio_range, coef_names=None, epsilon=0.05, random_state = 1234):
     """Recursively find a reasonable value for u2
 
         Parameters
@@ -317,9 +320,10 @@ def find_u2_loss(u2_min, u2_max, coef_optim, coef_optim_var, loss_func,
         u1 = 0.5
     else:
         u1 = 0
-
+        
     df = draw_models_initial(
-        coef_optim=coef_optim, coef_optim_var=coef_optim_var, 
+        coef_optim=coef_optim, coef_optim_var=coef_optim_var,
+        coef_names=coef_names,
         m=m, u1=u1, u2=u2, random_state=random_state
     )
     df, perf_metric_optim = mark_elig_loss(
@@ -329,14 +333,14 @@ def find_u2_loss(u2_min, u2_max, coef_optim, coef_optim_var, loss_func,
 
     if ratio >= max(ratio_range):
         # current u2 too small
-        return find_u2_loss(u2_min=u2, u2_max=u2_max, coef_optim=coef_optim, \
-            coef_optim_var=coef_optim_var, loss_func=loss_func, m=m, k=k, \
-                ratio_range=ratio_range, epsilon=epsilon, random_state=random_state)
+        return find_u2_loss(
+            u2_min=u2, u2_max=u2_max, coef_optim=coef_optim, 
+            coef_optim_var=coef_optim_var, coef_names=coef_names,loss_func=loss_func, m=m, k=k, ratio_range=ratio_range, epsilon=epsilon, random_state=random_state)
     elif ratio <= min(ratio_range):
         # current u2 too large
-        return find_u2_loss(u2_min=u2_min, u2_max=u2, coef_optim=coef_optim, \
-            coef_optim_var=coef_optim_var, loss_func=loss_func, m=m, k=k, \
-                ratio_range=ratio_range, epsilon=epsilon, random_state=random_state)
+        return find_u2_loss(
+            u2_min=u2_min, u2_max=u2, coef_optim=coef_optim, 
+            coef_optim_var=coef_optim_var, coef_names=coef_names, loss_func=loss_func, m=m, k=k, ratio_range=ratio_range, epsilon=epsilon, random_state=random_state)
     else:
         # current u2 is ok
         return u2

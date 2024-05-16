@@ -52,15 +52,15 @@ class models:
             
         x_dm, x_groups = _util.model_matrix(x=x, x_names_cat=x_names_cat)
         if outcome_type == "binary":
-            x_with_constant = sm.add_constant(x_dm)
+            x_with_constant = sm.add_constant(x_dm).astype("float")
             m0 = sm.GLM(y, x_with_constant, family=sm.families.Binomial())
             m = m0.fit()
         elif outcome_type == "continuous":
-            x_with_constant = sm.add_constant(x_dm)
+            x_with_constant = sm.add_constant(x_dm).astype("float")
             m0 = sm.OLS(y, x_with_constant)
             m = m0.fit()
         elif outcome_type == "ordinal":
-            m0 = OrderedModel(y, x_dm, distr=ordinal_link)
+            m0 = OrderedModel(y, x_dm.astype("float"), distr=ordinal_link)
             m = m0.fit(method='bfgs')
         else:
             raise ValueError('outcome type not yet supported')
@@ -110,10 +110,16 @@ class models:
             print(f"Nearly optimal defined based on {self.criterion} with epsilon={self.epsilon}.\n")
         else:
             print(f"Nearly optimal defined based on {self.criterion}.\n")
-
+        
+        if not isinstance(self.model_optim.params, np.ndarray):
+            coef_names = None
+        else:
+            coef_names = self.model_optim.summary().tables[1].index.tolist()
+            
         coef_gen = draw_models_initial(
             coef_optim=self.model_optim.params, 
             coef_optim_var=self.model_optim.cov_params(), 
+            coef_names=coef_names,
             m=m, u1=u1, u2=u2, random_state=random_state
         )
         if self.criterion == 'loss':
@@ -125,7 +131,7 @@ class models:
             x_dm, x_groups = _util.model_matrix(
                 x=self.x, x_names_cat=self.x_names_cat
             )
-            x_with_constant = sm.add_constant(x_dm)
+            x_with_constant = sm.add_constant(x_dm).astype("float")
             coef_elg, perf_metric_optim = mark_elig_auc(
                 coef_df=coef_gen, coef_optim=self.model_optim.params, 
                 pred_func=self.model_optim.model.predict, 
@@ -135,7 +141,7 @@ class models:
             x_dm, x_groups = _util.model_matrix(
                 x=self.x, x_names_cat=self.x_names_cat
             )
-            x_with_constant = sm.add_constant(x_dm)
+            x_with_constant = sm.add_constant(x_dm).astype("float")
             coef_elg, perf_metric_optim = mark_elig_prauc(
                 coef_df=coef_gen, coef_optim=self.model_optim.params, 
                 pred_func=self.model_optim.model.predict, 
@@ -166,9 +172,7 @@ class models:
                 n_points = 11
                 perf_metric_upper = np.max([np.max(coef_elg['perf_metric']), 
                                             perf_metric_optim[2]])
-                x_breaks = np.linspace(
-                    perf_metric_optim[1],perf_metric_upper, n_points
-                )
+                x_breaks = np.linspace(perf_metric_optim[1],perf_metric_upper, n_points)
                 plot = plot_perf_metric(
                     perf_metric=coef_elg['perf_metric'], 
                     eligible=coef_elg['eligible'],
@@ -224,9 +228,15 @@ class models:
         else:
             print(f"Nearly optimal defined based on {self.criterion}.\n")
         
+        if not isinstance(self.model_optim.params, np.ndarray):
+            coef_names = None
+        else:
+            coef_names = self.model_optim.summary().tables[1].index.tolist()
+            
         df = draw_models_initial(
             coef_optim=self.model_optim.params, 
             coef_optim_var=self.model_optim.cov_params(), 
+            coef_names=coef_names,
             m=m, u1=0, u2=1, random_state=random_state
         )
         
@@ -239,7 +249,7 @@ class models:
             x_dm, x_groups = _util.model_matrix(
                 x=self.x, x_names_cat=self.x_names_cat
             )
-            x_with_constant = sm.add_constant(x_dm)
+            x_with_constant = sm.add_constant(x_dm).astype("float")
             df, perf_metric_optim = mark_elig_auc(
                 coef_df=df, coef_optim=self.model_optim.params, 
                 pred_func=self.model_optim.model.predict, 
@@ -249,7 +259,7 @@ class models:
             x_dm, x_groups = _util.model_matrix(
                 x=self.x, x_names_cat=self.x_names_cat
             )
-            x_with_constant = sm.add_constant(x_dm)
+            x_with_constant = sm.add_constant(x_dm).astype("float")
             df, perf_metric_optim = mark_elig_prauc(
                 coef_df=df, coef_optim=self.model_optim.params, 
                 pred_func=self.model_optim.model.predict, 
@@ -267,12 +277,14 @@ class models:
             u2_max = None
             u2_min = 1
         
+            
         if self.criterion == 'loss':
             u2 = find_u2_loss(
                 u2_min=u2_min, u2_max=u2_max, 
                 coef_optim=self.model_optim.params, 
                 coef_optim_var=self.model_optim.cov_params(), 
                 loss_func=self.model_prefit.loglike, 
+                coef_names=coef_names,
                 m=m, k=k, ratio_range=ratio_range, epsilon=epsilon,
                 random_state=random_state
             )

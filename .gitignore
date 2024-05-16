@@ -10,6 +10,7 @@ in_progress/*
 r/*.Rproj
 
 .ipy*
+*.pyc
 
 python/build/*
 python/ShapleyVIC.egg-info/*

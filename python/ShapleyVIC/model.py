@@ -10,7 +10,7 @@ from ._draw_models import *
 
 
 class models:
-    def __init__(self, x, y, output_dir, outcome_type="binary", ordinal_link="logit", criterion="loss", epsilon = 0.05, x_names_cat=None, save_data=True):
+    def __init__(self, x, y, output_dir, outcome_type="binary", ordinal_link="logit", criterion="loss", epsilon = 0.05, x_names_cat=None, save_data=True, sample_w=None):
         """ Initialise models by training optimal model
 
             Parameters
@@ -53,7 +53,7 @@ class models:
         x_dm, x_groups = _util.model_matrix(x=x, x_names_cat=x_names_cat)
         if outcome_type == "binary":
             x_with_constant = sm.add_constant(x_dm).astype("float")
-            m0 = sm.GLM(y, x_with_constant, family=sm.families.Binomial())
+            m0 = sm.GLM(y, x_with_constant, family=sm.families.Binomial(), freq_weights=sample_w)
             m = m0.fit()
         elif outcome_type == "continuous":
             x_with_constant = sm.add_constant(x_dm).astype("float")
